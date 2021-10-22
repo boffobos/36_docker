@@ -1,0 +1,60 @@
+version: '3'
+ 
+services:
+ 
+  app:
+    build:
+      context: ./fpm
+      dockerfile: Dockerfile
+    image: app/php # name for image
+    container_name: app # name for container
+    volumes:
+       - ./app:/data/${SITE_URL}
+    # local network for containers
+    networks:
+      - app-network
+ 
+  #Nginx container
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: app/nginx
+    container_name: nginx
+    volumes:
+       - ./app:/data/${SITE_URL}
+
+    # port forwarding
+    ports:
+      - "8080:80"
+      - "4430:443"
+    networks:
+      - app-network
+ 
+  # Postgresql db
+  postgres:
+    build:
+      context: ./pgsql
+      dockerfile: Dockerfile
+    image: app/postgres
+    container_name: db
+    ports:
+      - "54320:5432"
+    # create db with next credentials
+    environment:
+      # Provide the password via an environment variable. If the variable is unset or empty, use a default password
+      # Explanation of this shell feature: https://unix.stackexchange.com/questions/122845/using-a-b-for-variable-assignment-in-scripts/122848#122848
+      POSTGRES_PASSWORD: ${PG_PAS:-4WXUms893U6j4GE&Hvk3S*hqcqebFgo!vZi}
+      POSTGRES_USER: ${PG_USER:-postgres}
+      POSTGRES_DB: ${PG_DB:-postgres}
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    # setting up custom config file that has been copied from host 
+    command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
+    networks:
+      - app-network
+ 
+#Docker Network
+networks:
+  app-network:
+    driver: bridge
